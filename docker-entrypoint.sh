@@ -185,7 +185,7 @@ sed -i 's/^group = .*/group = nginx/' /etc/php83/php-fpm.d/www.conf
 if [ -e /etc/localtime ]; then rm -f /etc/localtime; fi
 ln -s /usr/share/zoneinfo/${TZ} /etc/localtime
 
-echo 'Running cron.php, php-fpm and nginx'
+echo 'Running crond.php, php-fpm and nginx'
 
 # Change ownership of /htdocs
 chown -R nginx:nginx /htdocs
@@ -193,10 +193,10 @@ chown -R nginx:nginx /htdocs
 # Change session directory permissions
 chmod 1733 /tmp
 
-# Run cron.php as nginx user
-if [ -f /htdocs/cron.php ]; then
+# Run crond.php as nginx user
+if [ -f /htdocs/crond.php ]; then
     cd /htdocs
-    su -s /bin/sh -c "php cron.php &" "nginx"
+    su -s /bin/sh -c "php crond.php &" "nginx"
 fi
 
 # Start services

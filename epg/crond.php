@@ -1,6 +1,6 @@
 <?php
 /**
- * @file cron.php
+ * @file crond.php
  * @brief 定时任务脚本
  *
  * 该脚本用于在特定时间间隔内执行 update.php，以实现定时任务功能。
@@ -29,7 +29,7 @@ function logCronMessage($message) {
 
 // 防止多进程同时运行
 $currentPid = posix_getpid();
-$processName = 'cron.php';
+$processName = 'crond.php';
 $oldPids = [];
 exec("pgrep -f '{$processName}'", $oldPids);
 foreach ($oldPids as $pid) {
