@@ -293,10 +293,10 @@ function iconUrlMatch($channels, $getDefault = true) {
     return $getDefault ? ($Config['default_icon'] ?? null) : null;
 }
 
-// 发送 http 请求
 function httpRequest($url, $userAgent = '', $timeout = 120, $connectTimeout = 10, $retry = 3, $postData = null) {
-    $ch = curl_init($url);
+    global $Config;
 
+    $userAgentString = $userAgent ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     $options = [
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
@@ -308,7 +308,7 @@ function httpRequest($url, $userAgent = '', $timeout = 120, $connectTimeout = 10
         CURLOPT_HEADER         => true,
         CURLOPT_ENCODING       => '',
         CURLOPT_HTTPHEADER     => [
-            'User-Agent: ' . ($userAgent ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+            'User-Agent: ' . $userAgentString,
             'Accept: */*'
         ]
     ];
@@ -318,26 +318,33 @@ function httpRequest($url, $userAgent = '', $timeout = 120, $connectTimeout = 10
         $options[CURLOPT_POSTFIELDS] = is_array($postData) ? http_build_query($postData) : $postData;
     }
 
-    curl_setopt_array($ch, $options);
+    // 读取代理设置
+    if (isset($Config['proxy']) && $Config['proxy'] == 1 && !empty($Config['proxy_url'])) {
+        $options[CURLOPT_PROXY] = $Config['proxy_url'];
+    }
 
     $lastError = '';
     while ($retry-- > 0) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, $options);
+        
         $response = curl_exec($ch);
 
         if ($response === false) {
             $lastError = curl_error($ch);
-            continue; 
+            curl_close($ch);
+            if ($retry > 0) usleep(500000);
+            continue;
         }
 
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         
-        // 判断状态码是否为 200
-        if ($status === 200) {
+        // 允许 200-299 范围内的成功状态码
+        if ($status >= 200 && $status < 300) {
             $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
             $headerStr  = substr($response, 0, $headerSize);
             $body       = substr($response, $headerSize);
 
-            // 匹配修改时间
             $mtime = preg_match('/Last-Modified:\s*(.+)\r?\n/i', $headerStr, $matches) ? strtotime(trim($matches[1])) : null;
 
             curl_close($ch);
@@ -349,10 +356,11 @@ function httpRequest($url, $userAgent = '', $timeout = 120, $connectTimeout = 10
             ];
         } else {
             $lastError = "HTTP Status: $status";
+            curl_close($ch);
+            if ($retry > 0) usleep(500000);
         }
     }
 
-    curl_close($ch);
     return [
         'success' => false,
         'body'    => null,
@@ -1168,8 +1176,7 @@ function generateLiveFiles($channelData, $fileName, $saveOnly = false) {
                     } elseif (!empty($groupInfo['alias'])) {
                         // 检查别名是否匹配
                         foreach ($groupInfo['alias'] as $alias) {
-                            if ((!empty($matchGroupTitle) && stripos($matchGroupTitle, $alias) !== false) ||
-                                stripos($alias, $matchGroupTitle) !== false) {
+                            if ($matchGroupTitle === $alias) {
                                 $isGroupMatched = true;
                                 break;
                             }
