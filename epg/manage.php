@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * @file manage.php
  * @brief 管理页面部分
@@ -15,12 +15,12 @@ initialDB();
 
 session_start();
 
-// 首次进入界面，检查 cron.php 是否运行正常
+// 首次进入界面，检查 crond.php 是否运行正常
 if ($Config['interval_time'] !== 0) {
     $output = [];
     exec("ps aux | grep '[c]ron.php'", $output);
     if(!$output) {
-        exec('php cron.php > /dev/null 2>/dev/null &');
+        exec('php crond.php > /dev/null 2>/dev/null &');
     }
 }
 
@@ -188,9 +188,9 @@ function updateConfigFields() {
     // 将新配置写回 config.json
     file_put_contents($configPath, json_encode($Config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-    // 重新启动 cron.php ，设置新的定时任务
+    // 重新启动 crond.php ，设置新的定时任务
     if ($oldConfig['start_time'] !== $start_time || $oldConfig['end_time'] !== $end_time || $oldConfig['interval_time'] !== $interval_time) {
-        exec('php cron.php > /dev/null 2>/dev/null &');
+        exec('php crond.php > /dev/null 2>/dev/null &');
     }
 
     // 清空缓存
@@ -213,7 +213,7 @@ try {
             'get_live_data', 'parse_source_info', 'download_source_data', 'delete_unused_icons',
             'delete_source_config', 'delete_unused_live_data', 'get_version_log', 'get_readme_content',
             'get_access_log', 'download_access_log', 'get_access_stats', 'clear_access_log', 'filter_access_log_by_ip',
-            'get_ip_list', 'test_redis', 'get_ip_location'
+            'get_ip_list', 'get_ip_location', 'test_redis', 'test_proxy'
         ];
         $action = key(array_intersect_key($_GET, array_flip($action_map))) ?: '';
 
@@ -904,6 +904,19 @@ try {
                     }
                 } catch (Exception $e) {
                     $dbResponse = ['success' => false];
+                }
+                break;
+
+            case 'test_proxy':
+                $testProxyUrl = isset($_GET['url']) ? trim($_GET['url']) : '';
+                $Config['proxy'] = 1;
+                $Config['proxy_url'] = $testProxyUrl;
+                $testTargetUrl = 'https://www.baidu.com';
+                $result = httpRequest($testTargetUrl, '', 5, 5, 1);
+                if ($result['success']) {
+                    $dbResponse = ['success' => true, 'message' => '连接成功！'];
+                } else {
+                    $dbResponse = ['success' => false, 'message' => '代理不可用或无法连接: ' . $result['error']];
                 }
                 break;
 

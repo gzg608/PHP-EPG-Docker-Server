@@ -1,4 +1,4 @@
-// 页面加载时预加载数据，减少等待时间
+﻿// 页面加载时预加载数据，减少等待时间
 document.addEventListener('DOMContentLoaded', function() {
     // 新用户弹出使用说明
     if (!localStorage.getItem('hasVisitedBefore') && 
@@ -18,7 +18,7 @@ document.getElementById('settingsForm').addEventListener('submit', function(even
     event.preventDefault();  // 阻止默认表单提交
 
     const fields = ['update_config', 'gen_xml', 'include_future_only', 'channel_fuzzy_match', 'ret_default', 'cht_to_chs', 'db_type', 
-        'mysql_host', 'mysql_dbname', 'mysql_username', 'mysql_password', 'cached_type', 'gen_list_enable', 'check_update', 
+        'mysql_host', 'mysql_dbname', 'mysql_username', 'mysql_password', 'cached_type', 'gen_list_enable', 'check_update', 'proxy', 
         'token_range', 'user_agent_range', 'notify', 'access_log_enable', 'target_time_zone', 'ip_list_mode', 'live_source_config', 
         'live_url_comment', 'live_tvg_logo_enable', 'live_tvg_id_enable', 'live_tvg_name_enable', 'live_source_auto_sync', 
         'live_channel_name_process', 'gen_live_update_time', 'm3u_icon_first', 'ku9_secondary_grouping', 'tag_gen_mode', 'check_speed_filter', 
@@ -480,13 +480,25 @@ function changeCachedType(selectElem) {
 }
 
 // 通用：将字段写入 config.json
-function saveConfigField(params) {
+function saveConfigField(params, showAlert = false) {
     params.update_config_field = 1;
     return fetch('manage.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(params)
-    }).then(r => r.json());
+    })
+    .then(r => r.json())
+    .then(data => {
+        // 仅在显式传入 showAlert 为 true 时才弹出提示
+        if (showAlert) {
+            showMessageModal(data && data.success ? '修改成功' : '修改失败');
+        }
+        return data;
+    })
+    .catch(err => {
+        if (showAlert) showMessageModal('保存过程中出现错误: ' + err);
+        throw err;
+    });
 }
 
 // 更新并测试 Redis 账号信息
@@ -1693,7 +1705,7 @@ function cleanUnusedSource() {
 }
 
 // 显示 EPG、直播源地址
-async function showUrl() {
+async function showUrl(showType) {
     try {
         // 并行获取 serverUrl 和 config
         const [serverRes, configRes] = await Promise.all([
@@ -1801,7 +1813,7 @@ async function showUrl() {
                 title: 'EPG接口',
                 links: [
                     [ gzUrl, 'xmltv' ],
-                    [ buildUrl(serverUrl, '/index.php', epgQuery), 'DIYP/百川、超级直播' ]
+                    [ buildUrl(serverUrl, '/index.php', epgQuery), 'DIYP、超级直播' ]
                 ]
             },
             {
@@ -1835,9 +1847,14 @@ async function showUrl() {
             }
         ];
 
+        // 根据传入参数过滤显示内容
+        const displaySections = showType === 'live' 
+            ? sections.filter(sec => sec.title === '直播源地址' || sec.title === '直播源代理')
+            : sections;
+
         const message = `
         <div id="copy-container" style="line-height:1.8;font-size:14px;">
-            ${sections.map(sec => `
+            ${displaySections.map(sec => `
                 <div style="font-weight:bold;margin:10px 0 4px;">${sec.title}</div>
                 ${sec.links.map(([url, name, opts]) => linkBlock(url, name, opts)).join('')}
             `).join('')}
@@ -2138,9 +2155,7 @@ function updateChannelMapping() {
     const regex = channelMappings.value.split('\n').filter(l => l.includes('regex:'));
     const ignore = allChannels.find(c => c.original === '【频道忽略字符】');
     const done = () => { channelMappings.value = [...map, ...regex].join('\n'); updateConfig(); };
-    ignore ? saveConfigField({
-        channel_ignore_chars: ignore.mapped.trim()
-    }).then(done).catch(console.error) : done();
+    ignore ? saveConfigField({ channel_ignore_chars: ignore.mapped.trim() }) : done();
 }
 
 // 解析 txt、m3u 直播源，并生成频道列表（仅频道）
@@ -2359,15 +2374,7 @@ function updateTokenUA(type) {
     saveConfigField({
         [`${type}_range`]: type_range,
         [type]: newTokenUA
-    })
-    .then(data => {
-        if (data.success) {
-            showMessageModal('修改成功');
-        } else {
-            showMessageModal('修改失败');
-        }
-    })
-    .catch(err => showMessageModal('保存过程中出现错误: ' + err));
+    }, true);
 }
 
 // token_range 更变后进行提示
@@ -2414,6 +2421,70 @@ async function showTokenRangeMessage() {
     }
 }
 
+// 修改代理地址对话框
+async function changeProxyUrl() {
+    const proxyMode = document.getElementById('proxy')?.value ?? "0";
+    if (proxyMode === '0') return;
+
+    try {
+        // 获取 config
+        const res = await fetch('manage.php?get_config=1');
+        const config = await res.json();
+        let currentProxyUrl = config.proxy_url || '';
+
+        showMessageModal('');
+        document.getElementById('messageModalMessage').innerHTML = `
+            <div class="modal-inner" style="width: auto;">
+                <h3>代理地址</h3>
+                <div>示例：http://127.0.0.1:7890、socks5://user:pass@127.0.0.1:1080</div>
+                <input type="text" id="newProxyUrl" value="${currentProxyUrl}" style="margin-top: 20px; margin-bottom: 20px; width: 100%; box-sizing: border-box;"/>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: -10px;">
+                    <button id="testProxyBtn" onclick="testProxyConnection()">测试连接</button>
+                    <button onclick="saveConfigField({ proxy_url: document.getElementById('newProxyUrl').value.trim() }, true)">确认</button>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        console.error('获取 config 失败:', err);
+        showMessageModal('无法获取配置信息，请稍后重试');
+    }
+}
+
+// 测试连接函数
+async function testProxyConnection() {
+    const proxyUrl = document.getElementById('newProxyUrl').value.trim();
+    if (!proxyUrl) {
+        alert('请先输入代理地址');
+        return;
+    }
+
+    const testBtn = document.getElementById('testProxyBtn');
+    const originalText = testBtn.innerText;
+    
+    try {
+        // 禁用按钮防止重复点击，并显示加载状态
+        testBtn.disabled = true;
+        testBtn.innerText = '测试中...';
+
+        // 假设你的后端 manage.php 支持 test_proxy 动作，请根据后端实际接口调整参数
+        const res = await fetch(`manage.php?test_proxy=1&url=${encodeURIComponent(proxyUrl)}`);
+        const data = await res.json();
+
+        if (data.success) {
+            alert('连接成功！');
+        } else {
+            alert('连接失败: ' + (data.message || '未知错误'));
+        }
+    } catch (err) {
+        console.error('测试代理失败:', err);
+        alert('测试连接失败，网络错误或接口不存在');
+    } finally {
+        // 恢复按钮状态
+        testBtn.disabled = false;
+        testBtn.innerText = originalText;
+    }
+}
+
 // 修改通知信息对话框
 async function changeNotifyInfo() {
     const notifyMode = document.getElementById('notify')?.value ?? "0";
@@ -2432,31 +2503,13 @@ async function changeNotifyInfo() {
                 <div>同时支持 <a href="https://sct.ftqq.com/r/15503" target="_blank">Server酱ᵀ</a>（免费5次/天）
 						与 <a href="https://sc3.ft07.com/" target="_blank">Server酱³</a>（公测不限次）</div>
                 <input type="text" id="newSCKey" value="${currentSCKey}" style="margin-top: 20px; margin-bottom: 20px;"/>
-                <button onclick="updateNotifyInfo()" style="margin-bottom: -10px;">确认</button>
+                <button onclick="saveConfigField({ serverchan_key: document.getElementById('newSCKey').value.trim() }, true)" style="margin-bottom: -10px;">确认</button>
             </div>
         `;
     } catch (err) {
         console.error('获取 config 失败:', err);
         showMessageModal('无法获取配置信息，请稍后重试');
     }
-}
-
-// 更新 serverchan_key 到 config.json
-function updateNotifyInfo() {
-    var newSCKey = document.getElementById('newSCKey').value.trim();
-
-    // 内容写入 config.json 文件
-    saveConfigField({
-        serverchan_key: newSCKey
-    })
-    .then(data => {
-        if (data.success) {
-            showMessageModal('修改成功');
-        } else {
-            showMessageModal('修改失败');
-        }
-    })
-    .catch(err => showMessageModal('保存过程中出现错误: ' + err));
 }
 
 // 修改测速过滤规则对话框
@@ -2498,17 +2551,7 @@ function updateCheckSpeedFilterRules() {
     const textarea = document.getElementById('newCheckSpeedFilterRules');
     const newRules = (textarea?.value || '').trim().split('\n').map(l => l.trim()).filter(Boolean).join('\n');
 
-    saveConfigField({
-        check_speed_filter_rules: newRules
-    })
-    .then(data => {
-        if (data.success) {
-            showMessageModal('修改成功');
-        } else {
-            showMessageModal('修改失败');
-        }
-    })
-    .catch(err => showMessageModal('保存过程中出现错误: ' + err));
+    saveConfigField({ check_speed_filter_rules: newRules }, true);
 }
 
 // 监听 access_log_enable 更变

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -411,6 +411,7 @@
             <input type="file" name="liveSourceFile" id="liveSourceFile" style="display: none;" accept=".m3u, .txt">
             <button id="uploadSourceBtn" onclick="document.getElementById('liveSourceFile').click()">上传源</button>
             <button id="parseSourceInfoBtn" onclick="parseSourceInfo()">解析源</button>
+            <button id="showLiveUrlBtn" onclick="showUrl('live')">访问地址</button>
             <button id="showLiveTemplateBtn" onclick="showLiveTemplate()">源模板</button>
             <button id="checkSourceBtn" onclick="showModal('chekspeed')">测速校验</button>
             <button id="saveSourceBtn" onclick="saveLiveSourceInfo()">保存</button>
@@ -826,6 +827,13 @@
         <!-- 第五行 -->
         <div class="row">
             <div class="column">
+                <label for="proxy"><span class="blue-span" onclick="changeProxyUrl()">代理访问：</span></label>
+                <select id="proxy" name="proxy" required onchange="changeProxyUrl()">
+                    <option value="1" <?php if (@$Config['proxy'] == 1) echo 'selected'; ?>>是</option>
+                    <option value="0" <?php if (@$Config['proxy'] == 0) echo 'selected'; ?>>否</option>
+                </select>
+            </div>
+            <div class="column">
                 <label for="notify"><span class="blue-span" onclick="changeNotifyInfo()">消息通知</span>：</label>
                 <select id="notify" name="notify" required onchange="changeNotifyInfo()">
                     <option value="0" <?php if (@$Config['notify'] == 0) echo 'selected'; ?>>关闭</option>
@@ -839,14 +847,6 @@
                     <option value="0" <?= ($Config['access_log_enable'] ?? 1) == 0 ? 'selected' : '' ?>>否</option>
                 </select>
             </div>
-            <div class="column">
-                <form id="importForm" method="post" enctype="multipart/form-data" style="display: inline-block;">
-                    <input type="file" name="importFile" id="importFile" style="display: none;" accept=".gz">
-                    <input type="hidden" name="importExport" id="formImportExport" value="">
-                    <span class="blue-span" id="import" onclick="document.getElementById('importFile').click()" style="margin-right: 20px;">数据导入</span>
-                    <span class="blue-span" id="export" onclick="document.getElementById('importForm').submit()">数据导出</span>
-                </form>
-            </div>
         </div>
 
         <!-- 第六行 -->
@@ -857,6 +857,12 @@
                 </a>
             </div>
             <div class="column">
+                <form id="importForm" method="post" enctype="multipart/form-data" style="display: inline-block;">
+                    <input type="file" name="importFile" id="importFile" style="display: none;" accept=".gz">
+                    <input type="hidden" name="importExport" id="formImportExport" value="">
+                    <span class="blue-span" id="import" onclick="document.getElementById('importFile').click()" style="margin-right: 20px;">数据导入</span>
+                    <span class="blue-span" id="export" onclick="document.getElementById('importForm').submit()">数据导出</span>
+                </form>
             </div>
             <div class="column">
             </div>

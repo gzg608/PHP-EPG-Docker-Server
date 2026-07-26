@@ -1,4 +1,4 @@
-{
+﻿{
     "xml_urls": [],
     "days_to_keep": 7,
     "start_time": "00:00",
@@ -57,6 +57,8 @@
     "target_time_zone": 0,
     "ip_list_mode": 0,
     "check_update": 1,
+    "proxy": 0,
+    "proxy_url": "",
     "notify": 0,
     "serverchan_key": "",
     "access_log_enable": 1,
