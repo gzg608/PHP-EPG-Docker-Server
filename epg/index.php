@@ -411,7 +411,7 @@ function fetchHandler($query_params) {
     }
 
     // 频道为空时，返回 xml.gz 文件
-    if ($cleanChannelName === '') {
+    if ($queryType !== 'diyp' && $cleanChannelName === '') {
         if ($Config['gen_xml'] ?? 0) {
             $type = $queryType ?? 'gz';
             $file = $type === 'gz' ? 't.xml.gz' : 't.xml';
@@ -478,6 +478,20 @@ function fetchHandler($query_params) {
             $response = json_encode($default_lovetv_program_info, JSON_UNESCAPED_UNICODE);
         }
         makeRes($response, $init['status'], $init['headers']);
+    }
+
+    // 返回默认 diyp 相应
+    if ($queryType === 'diyp') {
+        $default_diyp_response = [
+            'channel_name' => '',
+            'date' => $date,
+            'url' => "https://github.com/taksssss/iptv-tool",
+            'icon' => '',
+            'epg_data' => []
+        ];
+        $response = json_encode($default_diyp_response, JSON_UNESCAPED_UNICODE);
+        makeRes($response, $init['status'], $init['headers']);
+        exit;
     }
 }
 

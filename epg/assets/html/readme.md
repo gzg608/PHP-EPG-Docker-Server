@@ -47,6 +47,7 @@ IP 列表：点击后可修改；可设置为「黑名单模式」、「白名�
 ### 额外提示
 - 可自行上传脚本至 `/data/scripts` 目录，使用以下接口访问（访问限制跟直播源一致）：  
 `http://xxx.xx/index.php?type=php&url=xxx.php&token=xxx&param=xxx`  
+- 可使用 `http://xxx.xx/index.php?type=diyp` 返回默认 json 串
 - `t.xml`, `t.xml.gz`, `tv.m3u`, `tv.txt` 可使用以下接口访问：  
 `http://xxx.xx/index.php?type=xxx`  
 `type` 分别为 `xml`, `gz`, `m3u`, `txt`
