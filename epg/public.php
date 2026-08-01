@@ -12,20 +12,37 @@
 require_once 'assets/opencc/vendor/autoload.php'; // 引入 Composer 自动加载器
 use Overtrue\PHPOpenCC\OpenCC; // 使用 OpenCC 库
 
+// 读取 JSON 配置文件，兼容 UTF-8 BOM
+function loadJson($path, $error = 'JSON文件解析失败')
+{
+    $content = preg_replace('/^\xEF\xBB\xBF/', '', file_get_contents($path));
+    $data = json_decode($content, true);
+
+    if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+        die($error . ': ' . json_last_error_msg());
+    }
+
+    return $data;
+}
+
 // 检查并解析配置文件和图标列表文件
 @mkdir(__DIR__ . '/data', 0755, true);
+
 $iconDir = __DIR__ . '/data/icon/'; @mkdir($iconDir, 0755, true);
 $liveDir = __DIR__ . '/data/live/'; @mkdir($liveDir, 0755, true);
 $epgDir = __DIR__ . '/data/epg/'; @mkdir($epgDir, 0755, true);
 $scriptsDir = __DIR__ . '/data/scripts/'; @mkdir($scriptsDir, 0755, true);
 $liveFileDir = __DIR__ . '/data/live/file/'; @mkdir($liveFileDir, 0755, true);
+
 file_exists($configPath = __DIR__ . '/data/config.json') || copy(__DIR__ . '/assets/defaultConfig.json', $configPath);
 file_exists($customSourcePath = __DIR__ . '/data/customSource.php') || copy(__DIR__ . '/assets/defaultCustomSource.php', $customSourcePath);
 file_exists($iconListPath = __DIR__ . '/data/iconList.json') || file_put_contents($iconListPath, json_encode(new stdClass(), JSON_PRETTY_PRINT));
-($iconList = json_decode(file_get_contents($iconListPath), true)) !== null || die("图标列表文件解析失败: " . json_last_error_msg());
-$iconListDefault = json_decode(file_get_contents(__DIR__ . '/assets/defaultIconList.json'), true) or die("默认图标列表文件解析失败: " . json_last_error_msg());
-$iconListMerged = array_merge($iconListDefault, $iconList); // 同一个键，以 iconList 的为准
-$Config = json_decode(file_get_contents($configPath), true) or die("配置文件解析失败: " . json_last_error_msg());
+
+$iconList = loadJson($iconListPath, '图标列表文件解析失败');
+$iconListDefault = loadJson(__DIR__ . '/assets/defaultIconList.json', '默认图标列表文件解析失败');
+$iconListMerged = array_merge($iconListDefault, $iconList); // 同一个键，以 iconList 为准
+
+$Config = loadJson($configPath, '配置文件解析失败');
 
 // 获取 serverUrl
 $protocol = ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? (($_SERVER['HTTPS'] ?? '') === 'on' ? 'https' : 'http'));

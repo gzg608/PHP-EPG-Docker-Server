@@ -55,8 +55,11 @@ jobs:
         run: |
           VERSION=$(TZ="Asia/Shanghai" date +"v%Y.%m.%d")  # 获取北京时间，并转换为 v2024.11.24 格式
 
-          # 剥离文件开头的 UTF-8 BOM 头
-          sed -i '1s/^\xef\xbb\xbf//' epg/assets/html/manage.html epg/assets/html/login.html
+          # 剥离文本文件开头的 UTF-8 BOM 头
+          find epg -type f \
+            ! -path "epg/assets/opencc/*" \
+            ! -path "epg/assets/tinyfilemanager/*" \
+            -exec perl -i -pe 's/^\x{FEFF}// if -T' {} +
 
           # 更新 manage.html
           sed -i "s|<span id=\"version\">.*</span>|<span id=\"version\">${VERSION}</span>|" epg/assets/html/manage.html

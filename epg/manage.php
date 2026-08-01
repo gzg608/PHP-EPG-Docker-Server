@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * @file manage.php
  * @brief 管理页面部分

@@ -1,4 +1,4 @@
-﻿// 页面加载时预加载数据，减少等待时间
+// 页面加载时预加载数据，减少等待时间
 document.addEventListener('DOMContentLoaded', function() {
     // 新用户弹出使用说明
     if (!localStorage.getItem('hasVisitedBefore') && 
