@@ -16,9 +16,9 @@ initialDB();
 session_start();
 
 // 首次进入界面，检查 crond.php 是否运行正常
-if ($Config['interval_time'] !== 0) {
+if ($Config['interval_time'] !== 0 && $_SERVER['REQUEST_METHOD'] === 'GET' && empty($_GET)) {
     $output = [];
-    exec("ps aux | grep '[c]ron.php'", $output);
+    exec("ps aux | grep '[c]rond.php'", $output);
     if(!$output) {
         exec('php crond.php > /dev/null 2>/dev/null &');
     }
